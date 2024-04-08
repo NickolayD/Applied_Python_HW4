@@ -6,4 +6,4 @@ services:
   bot:
     build: bot
     environment:
-      - BOT_TOKEN=6687558196:AAGJP4pEgYSKQroaxPh44Jd0M_3frOz4vfk
+      - BOT_TOKEN=6944300570:AAE6QUTRukQy6BoYmvF4zeybHIWR-xoypnY
