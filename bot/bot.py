@@ -4,13 +4,13 @@ import json
 import logging
 import requests
 import time
+import torch
+from io import BytesIO
+from PIL import Image
 from aiogram import Dispatcher, Bot, F
 from aiogram.filters.command import Command
 from aiogram.types import Message
-from io import BytesIO
-from PIL import Image
-from skimage import color
-from skimage.feature import hog
+
 
 # логирование
 logging.basicConfig(level=logging.INFO)
@@ -93,40 +93,37 @@ async def predict_by_photo(message: Message, bot: Bot):
     )
     try:
         logging.info("Downloading a photo.")
-        io = BytesIO()
+        container = BytesIO()
         await bot.download(
             message.photo[-1],
-            destination=io
+            destination=container
         )
-        logging.info("Preparing data.")
-        # подготовка данных
-        image = Image.open(io)
-        fd = hog(color.rgb2gray(image.resize((224, 224))),
-                 orientations=8,
-                 pixels_per_cell=(16, 16),
-                 cells_per_block=(4, 4),
-                 block_norm='L2'
-                 )
-        fd = fd.reshape((fd.shape[0],))
+        logging.info("Preparing image.")
+        image = Image.open(container)
+        image = config.transform(image)
+        image = torch.flatten(image[None, :, :, :])
         logging.info("Making a prediction.")
         # POST-запрос к сервису
         r = requests.post(
             config._APP_ADRESS+"/predict",
-            data=json.dumps({"array": list(fd)})
+            data=json.dumps({"array": image.tolist()})
         )
         # обработка ответа от сервиса
         dct = dict(json.loads(r.text))
+        print(r.text)
         await message.answer(
              config.PREDICT.format(dct["Vegetable"])
         )
-    except Exception:
+    except Exception as e:
         logging.info("Problem while predicting.")
+        logging.info("Exception message: " + str(e))
         await message.answer(config.PREDICTFAIL)
 
 
 async def main() -> None:
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
+
 
 if __name__ == '__main__':
     asyncio.run(main())
