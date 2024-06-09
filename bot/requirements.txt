@@ -1,6 +1,3 @@
 requests
-numpy
 asyncio
 aiogram
-pillow
-scikit-image
