@@ -1,11 +1,13 @@
 from config import model, veg_dict
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
 from typing import List
+import os
 import uvicorn
+import torch
 
 
-class MyArr(BaseModel):
+class PostData(BaseModel):
     array: List[float]
 
 
@@ -18,14 +20,17 @@ async def homepage():
 
 
 @app.post('/predict')
-async def predict(obj: MyArr):
-    if len(obj.array) != 15488:
+async def predict(obj: PostData):
+    # Проверка на наличие файла
+    if len(obj.array) != 3 * 224 * 224:
         raise HTTPException(
             status_code=1001,
-            detail="Wrong data size."
+            detail="Wrong list size."
         )
-    prediction = model.predict([obj.array])
-    return {"Vegetable": veg_dict[prediction[0]]}
+    # Предсказание модели
+    prediction = model(torch.Tensor(obj.array).resize(1, 3, 224, 224))
+    # Возвращает класс, вероятность которого максимальна
+    return {"Vegetable": veg_dict[prediction.argmax(dim=1).item()]}
 
 
 if __name__ == '__main__':
